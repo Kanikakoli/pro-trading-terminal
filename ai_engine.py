@@ -11,7 +11,7 @@ def generate_trade(indicator_data, option_data=None):
     reasons = []
 
     # -----------------------------
-    # EMA Trend
+    # EMA Trends
     # -----------------------------
     if indicator_data["EMA9"] > indicator_data["EMA20"]:
         score += 15
