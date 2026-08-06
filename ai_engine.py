@@ -1,106 +1,159 @@
 """
 =========================================================
 PRO AI TRADING TERMINAL
-AI Decision Engine
-Version : 1.0
+AI Trading Engine
+Version : 2.0
 =========================================================
 """
-
 
 def generate_signal(ind):
 
     score = 0
     reasons = []
 
-    # -------------------------
-    # EMA Trend
-    # -------------------------
-    if ind["Price"] > ind["EMA20"]:
-        score += 10
-        reasons.append("Price above EMA20")
+    price = ind["Price"]
 
-    if ind["EMA20"] > ind["EMA50"]:
-        score += 15
-        reasons.append("EMA20 above EMA50")
+    # ---------------------------------
+    # EMA Trend (25 Points)
+    # ---------------------------------
 
-    if ind["EMA50"] > ind["EMA200"]:
-        score += 20
-        reasons.append("EMA50 above EMA200")
+    if ind["EMA20"] > ind["EMA50"] > ind["EMA200"]:
+        score += 25
+        reasons.append("Strong EMA Uptrend")
 
-    # -------------------------
-    # RSI
-    # -------------------------
+    elif ind["EMA20"] < ind["EMA50"] < ind["EMA200"]:
+        score -= 25
+        reasons.append("Strong EMA Downtrend")
+
+    # ---------------------------------
+    # RSI (15 Points)
+    # ---------------------------------
+
     if 55 <= ind["RSI"] <= 70:
         score += 15
-        reasons.append("Healthy RSI")
+        reasons.append("Bullish RSI")
 
-    elif ind["RSI"] < 35:
-        score -= 10
-        reasons.append("Oversold")
+    elif 30 <= ind["RSI"] <= 45:
+        score -= 15
+        reasons.append("Bearish RSI")
 
     elif ind["RSI"] > 75:
-        score -= 15
         reasons.append("Overbought")
 
-    # -------------------------
-    # MACD
-    # -------------------------
+    elif ind["RSI"] < 25:
+        reasons.append("Oversold")
+
+    # ---------------------------------
+    # MACD (20 Points)
+    # ---------------------------------
+
     if ind["MACD"] > ind["MACD_SIGNAL"]:
-        score += 15
-        reasons.append("Bullish MACD")
+        score += 20
+        reasons.append("MACD Bullish")
 
     else:
-        score -= 10
-        reasons.append("Bearish MACD")
+        score -= 20
+        reasons.append("MACD Bearish")
 
-    # -------------------------
-    # ADX
-    # -------------------------
-    if ind["ADX"] > 25:
-        score += 10
-        reasons.append("Strong Trend")
+    # ---------------------------------
+    # VWAP (15 Points)
+    # ---------------------------------
 
-    # -------------------------
-    # VWAP
-    # -------------------------
-    if ind["Price"] > ind["VWAP"]:
-        score += 10
+    if price > ind["VWAP"]:
+        score += 15
         reasons.append("Above VWAP")
 
-    # -------------------------
-    # Bollinger
-    # -------------------------
-    if ind["Price"] < ind["BB_LOWER"]:
-        score += 5
+    else:
+        score -= 15
+        reasons.append("Below VWAP")
+
+    # ---------------------------------
+    # ADX (15 Points)
+    # ---------------------------------
+
+    if ind["ADX"] > 25:
+        score += 15
+        reasons.append("Strong Trend")
+
+    else:
+        reasons.append("Weak Trend")
+
+    # ---------------------------------
+    # Bollinger Bands (10 Points)
+    # ---------------------------------
+
+    if price < ind["BB_LOWER"]:
+        score += 10
         reasons.append("Near Lower Band")
 
-    if ind["Price"] > ind["BB_UPPER"]:
-        score -= 5
+    elif price > ind["BB_UPPER"]:
+        score -= 10
         reasons.append("Near Upper Band")
 
-    # -------------------------
+    # ---------------------------------
     # Final Signal
-    # -------------------------
+    # ---------------------------------
 
-    confidence = min(max(score, 0), 100)
-
-    if confidence >= 85:
+    if score >= 60:
         signal = "STRONG BUY"
 
-    elif confidence >= 70:
+    elif score >= 30:
         signal = "BUY"
 
-    elif confidence >= 45:
-        signal = "HOLD"
+    elif score <= -60:
+        signal = "STRONG SELL"
 
-    elif confidence >= 25:
+    elif score <= -30:
         signal = "SELL"
 
     else:
-        signal = "STRONG SELL"
+        signal = "HOLD"
+
+    confidence = min(abs(score), 95)
+
+    # ---------------------------------
+    # Risk Levels
+    # ---------------------------------
+
+    atr = ind["ATR"]
+
+    if signal in ["BUY", "STRONG BUY"]:
+
+        entry = round(price, 2)
+        sl = round(price - (1.5 * atr), 2)
+        target1 = round(price + (2 * atr), 2)
+        target2 = round(price + (4 * atr), 2)
+
+    elif signal in ["SELL", "STRONG SELL"]:
+
+        entry = round(price, 2)
+        sl = round(price + (1.5 * atr), 2)
+        target1 = round(price - (2 * atr), 2)
+        target2 = round(price - (4 * atr), 2)
+
+    else:
+
+        entry = round(price, 2)
+        sl = "-"
+        target1 = "-"
+        target2 = "-"
 
     return {
+
         "Signal": signal,
+
         "Confidence": confidence,
+
+        "Score": score,
+
+        "Entry": entry,
+
+        "SL": sl,
+
+        "Target1": target1,
+
+        "Target2": target2,
+
         "Reasons": reasons
-    }
+
+        }
