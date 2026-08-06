@@ -1,151 +1,106 @@
-from datetime import datetime
+"""
+=========================================================
+PRO AI TRADING TERMINAL
+AI Decision Engine
+Version : 1.0
+=========================================================
+"""
 
 
-# -------------------------------------------------------
-# AI TRADE ENGINE
-# -------------------------------------------------------
-
-def generate_trade(indicator_data, option_data=None):
+def generate_signal(ind):
 
     score = 0
     reasons = []
 
-    # -----------------------------
-    # EMA Trends
-    # -----------------------------
-    if indicator_data["EMA9"] > indicator_data["EMA20"]:
-        score += 15
-        reasons.append("EMA 9 > EMA 20")
+    # -------------------------
+    # EMA Trend
+    # -------------------------
+    if ind["Price"] > ind["EMA20"]:
+        score += 10
+        reasons.append("Price above EMA20")
 
-    if indicator_data["EMA20"] > indicator_data["EMA50"]:
+    if ind["EMA20"] > ind["EMA50"]:
         score += 15
-        reasons.append("EMA 20 > EMA 50")
+        reasons.append("EMA20 above EMA50")
 
-    # -----------------------------
+    if ind["EMA50"] > ind["EMA200"]:
+        score += 20
+        reasons.append("EMA50 above EMA200")
+
+    # -------------------------
     # RSI
-    # -----------------------------
-    rsi = indicator_data["RSI"]
-
-    if 55 <= rsi <= 70:
+    # -------------------------
+    if 55 <= ind["RSI"] <= 70:
         score += 15
         reasons.append("Healthy RSI")
 
-    elif rsi > 70:
-        score -= 5
-        reasons.append("Overbought")
-
-    elif rsi < 35:
+    elif ind["RSI"] < 35:
         score -= 10
         reasons.append("Oversold")
 
-    # -----------------------------
-    # MACD
-    # -----------------------------
-    if indicator_data["MACD"] > 0:
-        score += 15
-        reasons.append("MACD Positive")
+    elif ind["RSI"] > 75:
+        score -= 15
+        reasons.append("Overbought")
 
-    # -----------------------------
+    # -------------------------
+    # MACD
+    # -------------------------
+    if ind["MACD"] > ind["MACD_SIGNAL"]:
+        score += 15
+        reasons.append("Bullish MACD")
+
+    else:
+        score -= 10
+        reasons.append("Bearish MACD")
+
+    # -------------------------
     # ADX
-    # -----------------------------
-    if indicator_data["ADX"] > 25:
+    # -------------------------
+    if ind["ADX"] > 25:
         score += 10
         reasons.append("Strong Trend")
 
-    # -----------------------------
+    # -------------------------
     # VWAP
-    # -----------------------------
-    if indicator_data["VWAP"] < indicator_data["EMA9"]:
+    # -------------------------
+    if ind["Price"] > ind["VWAP"]:
         score += 10
         reasons.append("Above VWAP")
 
-    # -----------------------------
-    # PCR
-    # -----------------------------
-    if option_data:
+    # -------------------------
+    # Bollinger
+    # -------------------------
+    if ind["Price"] < ind["BB_LOWER"]:
+        score += 5
+        reasons.append("Near Lower Band")
 
-        pcr = option_data["PCR"]
+    if ind["Price"] > ind["BB_UPPER"]:
+        score -= 5
+        reasons.append("Near Upper Band")
 
-        if 0.90 <= pcr <= 1.20:
-            score += 10
-            reasons.append("Healthy PCR")
-
-        elif pcr > 1.20:
-            score += 5
-            reasons.append("Bullish PCR")
-
-        elif pcr < 0.70:
-            score -= 10
-            reasons.append("Bearish PCR")
-
-    # -----------------------------
+    # -------------------------
     # Final Signal
-    # -----------------------------
-    if score >= 80:
+    # -------------------------
 
-        signal = "★★★★★ STRONG BUY"
+    confidence = min(max(score, 0), 100)
 
-    elif score >= 65:
+    if confidence >= 85:
+        signal = "STRONG BUY"
 
-        signal = "★★★★ BUY"
+    elif confidence >= 70:
+        signal = "BUY"
 
-    elif score >= 45:
+    elif confidence >= 45:
+        signal = "HOLD"
 
-        signal = "★★★ HOLD"
-
-    elif score >= 30:
-
-        signal = "★★ SELL"
+    elif confidence >= 25:
+        signal = "SELL"
 
     else:
-
-        signal = "★★★★★ STRONG SELL"
-
-    confidence = min(score, 100)
+        signal = "STRONG SELL"
 
     return {
-
-        "signal": signal,
-
-        "confidence": confidence,
-
-        "score": score,
-
-        "reasons": reasons,
-
-        "generated": datetime.now().strftime("%d-%m-%Y %H:%M:%S")
-
+        "Signal": signal,
+        "Confidence": confidence,
+        "Reasons": reasons
     }
-
-
-# -------------------------------------------------------
-# RISK MANAGEMENT
-# -------------------------------------------------------
-
-def risk_management(entry_price):
-
-    sl = round(entry_price * 0.97, 2)
-
-    target1 = round(entry_price * 1.03, 2)
-
-    target2 = round(entry_price * 1.06, 2)
-
-    target3 = round(entry_price * 1.10, 2)
-
-    rr = round((target2-entry_price)/(entry_price-sl),2)
-
-    return {
-
-        "Entry": entry_price,
-
-        "StopLoss": sl,
-
-        "Target1": target1,
-
-        "Target2": target2,
-
-        "Target3": target3,
-
-        "RiskReward": rr
-
-          }
