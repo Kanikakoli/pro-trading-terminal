@@ -1,104 +1,163 @@
 """
 =========================================================
 PRO AI TRADING TERMINAL
-Risk Management Engine
-Version : 1.0
+Professional Risk Manager
+Version : 2.0
 =========================================================
 """
 
 
-def calculate_trade(entry,
-                    capital=100000,
-                    risk_percent=2):
+def calculate_trade(price,
+                    stop_loss,
+                    capital,
+                    risk_percent=1):
 
     """
-    Returns complete trade plan
+    Returns complete position sizing.
     """
 
     risk_amount = capital * (risk_percent / 100)
 
-    stoploss = round(entry * 0.97, 2)
+    risk_per_share = abs(price - stop_loss)
 
-    target1 = round(entry * 1.03, 2)
+    if risk_per_share <= 0:
 
-    target2 = round(entry * 1.06, 2)
+        quantity = 0
 
-    target3 = round(entry * 1.10, 2)
+    else:
 
-    risk_per_share = max(entry - stoploss, 0.01)
+        quantity = int(risk_amount / risk_per_share)
 
-    quantity = int(risk_amount / risk_per_share)
-
-    investment = round(quantity * entry, 2)
-
-    reward = target2 - entry
-
-    rr = round(reward / risk_per_share, 2)
+    investment = quantity * price
 
     return {
 
-        "Entry": entry,
+        "Capital": round(capital, 2),
 
-        "StopLoss": stoploss,
-
-        "Target1": target1,
-
-        "Target2": target2,
-
-        "Target3": target3,
+        "RiskPercent": risk_percent,
 
         "RiskAmount": round(risk_amount, 2),
 
         "Quantity": quantity,
 
-        "Investment": investment,
-
-        "RiskReward": rr
+        "Investment": round(investment, 2)
 
     }
 
 
-def trailing_stop(entry,
+def risk_reward(entry,
+                stop_loss,
+                target):
+
+    risk = abs(entry - stop_loss)
+
+    reward = abs(target - entry)
+
+    if risk == 0:
+
+        return 0
+
+    return round(reward / risk, 2)
+
+
+def trailing_stop(signal,
                   current_price,
-                  current_sl):
+                  atr):
 
     """
-    Dynamic trailing stop
+    ATR Based Trailing Stop
     """
 
-    profit = current_price - entry
+    if signal in ["BUY", "STRONG BUY"]:
 
-    if profit >= entry * 0.10:
+        return round(current_price - atr * 1.5, 2)
 
-        return round(current_price * 0.97, 2)
+    elif signal in ["SELL", "STRONG SELL"]:
 
-    elif profit >= entry * 0.05:
+        return round(current_price + atr * 1.5, 2)
 
-        return round(current_price * 0.98, 2)
-
-    elif profit >= entry * 0.03:
-
-        return round(entry, 2)
-
-    return current_sl
+    return current_price
 
 
-def trade_status(current_price,
-                 stoploss,
-                 target1,
-                 target2,
-                 target3):
+def target_levels(entry,
+                  atr,
+                  signal):
 
-    if current_price <= stoploss:
-        return "STOP LOSS HIT"
+    if signal in ["BUY", "STRONG BUY"]:
 
-    if current_price >= target3:
-        return "TARGET 3 ACHIEVED"
+        return {
 
-    if current_price >= target2:
-        return "TARGET 2 ACHIEVED"
+            "T1": round(entry + atr * 2, 2),
 
-    if current_price >= target1:
-        return "TARGET 1 ACHIEVED"
+            "T2": round(entry + atr * 4, 2),
 
-    return "TRADE ACTIVE"
+            "T3": round(entry + atr * 6, 2)
+
+        }
+
+    elif signal in ["SELL", "STRONG SELL"]:
+
+        return {
+
+            "T1": round(entry - atr * 2, 2),
+
+            "T2": round(entry - atr * 4, 2),
+
+            "T3": round(entry - atr * 6, 2)
+
+        }
+
+    return {
+
+        "T1": entry,
+
+        "T2": entry,
+
+        "T3": entry
+
+    }
+
+
+def trade_summary(signal,
+                  entry,
+                  stop_loss,
+                  atr,
+                  capital=100000,
+                  risk_percent=1):
+
+    pos = calculate_trade(
+        entry,
+        stop_loss,
+        capital,
+        risk_percent
+    )
+
+    targets = target_levels(
+        entry,
+        atr,
+        signal
+    )
+
+    rr = risk_reward(
+        entry,
+        stop_loss,
+        targets["T2"]
+    )
+
+    trail = trailing_stop(
+        signal,
+        entry,
+        atr
+    )
+
+    return {
+
+        **pos,
+
+        **targets,
+
+        "TrailingSL": trail,
+
+        "RiskReward": rr
+
+                    }
