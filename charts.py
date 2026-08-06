@@ -1,7 +1,7 @@
 """
 =========================================================
 PRO AI TRADING TERMINAL
-Professional Charts Engine
+Professional Chart Component
 Version : 1.0
 =========================================================
 """
@@ -9,18 +9,15 @@ Version : 1.0
 import plotly.graph_objects as go
 
 
-def create_chart(df):
+def candlestick_chart(df, symbol):
 
     fig = go.Figure()
 
-    # -------------------------
-    # Candlestick
-    # -------------------------
     fig.add_trace(
 
         go.Candlestick(
 
-            x=df["Datetime"],
+            x=df["Datetime"] if "Datetime" in df.columns else df["Date"],
 
             open=df["Open"],
 
@@ -30,147 +27,61 @@ def create_chart(df):
 
             close=df["Close"],
 
-            name="Price"
+            name=symbol
 
         )
 
     )
 
-    # -------------------------
-    # EMA20
-    # -------------------------
-    fig.add_trace(
+    if "EMA20" in df.columns:
 
-        go.Scatter(
+        fig.add_trace(
 
-            x=df["Datetime"],
+            go.Scatter(
 
-            y=df["EMA20"],
+                x=df["Datetime"] if "Datetime" in df.columns else df["Date"],
 
-            mode="lines",
+                y=df["EMA20"],
 
-            name="EMA20"
+                name="EMA20",
 
-        )
+                line=dict(width=1)
 
-    )
-
-    # -------------------------
-    # EMA50
-    # -------------------------
-    fig.add_trace(
-
-        go.Scatter(
-
-            x=df["Datetime"],
-
-            y=df["EMA50"],
-
-            mode="lines",
-
-            name="EMA50"
+            )
 
         )
 
-    )
+    if "EMA50" in df.columns:
 
-    # -------------------------
-    # EMA200
-    # -------------------------
-    fig.add_trace(
+        fig.add_trace(
 
-        go.Scatter(
+            go.Scatter(
 
-            x=df["Datetime"],
+                x=df["Datetime"] if "Datetime" in df.columns else df["Date"],
 
-            y=df["EMA200"],
+                y=df["EMA50"],
 
-            mode="lines",
+                name="EMA50",
 
-            name="EMA200"
+                line=dict(width=1)
 
-        )
-
-    )
-
-    # -------------------------
-    # VWAP
-    # -------------------------
-    fig.add_trace(
-
-        go.Scatter(
-
-            x=df["Datetime"],
-
-            y=df["VWAP"],
-
-            mode="lines",
-
-            name="VWAP"
+            )
 
         )
 
-    )
-
-    # -------------------------
-    # Bollinger Bands
-    # -------------------------
-    fig.add_trace(
-
-        go.Scatter(
-
-            x=df["Datetime"],
-
-            y=df["BB_UPPER"],
-
-            mode="lines",
-
-            name="BB Upper"
-
-        )
-
-    )
-
-    fig.add_trace(
-
-        go.Scatter(
-
-            x=df["Datetime"],
-
-            y=df["BB_LOWER"],
-
-            mode="lines",
-
-            name="BB Lower"
-
-        )
-
-    )
-
-    # -------------------------
-    # Layout
-    # -------------------------
     fig.update_layout(
 
-        template="plotly_dark",
-
-        height=700,
+        height=600,
 
         xaxis_rangeslider_visible=False,
 
+        template="plotly_dark",
+
+        margin=dict(l=5, r=5, t=30, b=5),
+
         legend_orientation="h",
 
-        margin=dict(
-
-            l=10,
-
-            r=10,
-
-            t=30,
-
-            b=10
-
-        )
+        title=f"{symbol} Price Chart"
 
     )
 
