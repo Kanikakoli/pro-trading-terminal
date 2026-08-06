@@ -8,6 +8,9 @@ Version : 1.0
 
 import streamlit as st
 import pandas as pd
+from core.market_data import safe_history
+from core.indicators import add_indicators
+from components.chart import candlestick_chart
 
 from core.market_data import market_snapshot
 from core.scanner import scanner_dataframe
