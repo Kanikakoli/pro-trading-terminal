@@ -1,15 +1,21 @@
 """
 =========================================================
 PRO AI TRADING TERMINAL
-Professional Stock Scanner
-Version : 1.0
+Professional Scanner Engine
+Version : 2.0
 =========================================================
 """
+
+import pandas as pd
 
 from core.market_data import safe_history
 from core.indicators import add_indicators, latest_indicators
 from core.ai_engine import generate_signal
 
+
+# -------------------------------------------------------
+# Watchlist
+# -------------------------------------------------------
 
 WATCHLIST = [
 
@@ -26,6 +32,10 @@ WATCHLIST = [
 ]
 
 
+# -------------------------------------------------------
+# Scan Single Symbol
+# -------------------------------------------------------
+
 def scan_symbol(symbol):
 
     try:
@@ -33,7 +43,6 @@ def scan_symbol(symbol):
         df = safe_history(symbol, "15m")
 
         if df.empty:
-
             return None
 
         df = add_indicators(df)
@@ -46,24 +55,40 @@ def scan_symbol(symbol):
 
             "Symbol": symbol,
 
-            "Price": ind["Price"],
+            "Price": ai["Entry"],
 
             "Signal": ai["Signal"],
 
             "Confidence": ai["Confidence"],
 
+            "Score": ai["Score"],
+
+            "Entry": ai["Entry"],
+
+            "SL": ai["SL"],
+
+            "Target1": ai["Target1"],
+
+            "Target2": ai["Target2"],
+
             "RSI": ind["RSI"],
 
             "ADX": ind["ADX"],
 
-            "Reasons": ", ".join(ai["Reasons"])
+            "VWAP": ind["VWAP"],
+
+            "Reasons": " | ".join(ai["Reasons"])
 
         }
 
-    except:
+    except Exception:
 
         return None
 
+
+# -------------------------------------------------------
+# Scan Entire Market
+# -------------------------------------------------------
 
 def scan_market():
 
@@ -74,10 +99,14 @@ def scan_market():
         item = scan_symbol(symbol)
 
         if item:
-
             results.append(item)
 
-    results.sort(
+    if len(results) == 0:
+        return []
+
+    results = sorted(
+
+        results,
 
         key=lambda x: x["Confidence"],
 
@@ -88,11 +117,17 @@ def scan_market():
     return results
 
 
-def top_buys(results):
+# -------------------------------------------------------
+# BUY LIST
+# -------------------------------------------------------
+
+def top_buys():
+
+    data = scan_market()
 
     return [
 
-        x for x in results
+        x for x in data
 
         if x["Signal"] in [
 
@@ -105,11 +140,17 @@ def top_buys(results):
     ]
 
 
-def top_sells(results):
+# -------------------------------------------------------
+# SELL LIST
+# -------------------------------------------------------
+
+def top_sells():
+
+    data = scan_market()
 
     return [
 
-        x for x in results
+        x for x in data
 
         if x["Signal"] in [
 
@@ -120,3 +161,18 @@ def top_sells(results):
         ]
 
     ]
+
+
+# -------------------------------------------------------
+# DataFrame
+# -------------------------------------------------------
+
+def scanner_dataframe():
+
+    data = scan_market()
+
+    if len(data) == 0:
+
+        return pd.DataFrame()
+
+    return pd.DataFrame(data)
