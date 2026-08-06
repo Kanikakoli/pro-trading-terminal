@@ -1,122 +1,149 @@
+"""
+=========================================================
+PRO AI TRADING TERMINAL
+Option Chain Engine
+Version : 1.0
+=========================================================
+"""
+
 import pandas as pd
 
 try:
     from nsepython import option_chain
-except ImportError:
+except:
     option_chain = None
 
 
-# -------------------------------------------------------
-# FETCH LIVE OPTION CHAIN
-# -------------------------------------------------------
-
-def fetch_option_chain(symbol="NIFTY"):
+def get_option_chain(symbol="NIFTY"):
 
     if option_chain is None:
-        return None
+        return pd.DataFrame()
 
     try:
 
         data = option_chain(symbol)
 
-        records = data["records"]["data"]
+        records = []
 
-        rows = []
+        for row in data["records"]["data"]:
 
-        total_call_oi = 0
-        total_put_oi = 0
+            strike = row.get("strikePrice")
 
-        max_call_oi = 0
-        max_put_oi = 0
+            ce = row.get("CE")
+            pe = row.get("PE")
 
-        call_resistance = None
-        put_support = None
-
-        for item in records:
-
-            strike = item["strikePrice"]
-
-            ce = item.get("CE", {})
-            pe = item.get("PE", {})
-
-            call_oi = ce.get("openInterest", 0)
-            put_oi = pe.get("openInterest", 0)
-
-            total_call_oi += call_oi
-            total_put_oi += put_oi
-
-            if call_oi > max_call_oi:
-                max_call_oi = call_oi
-                call_resistance = strike
-
-            if put_oi > max_put_oi:
-                max_put_oi = put_oi
-                put_support = strike
-
-            rows.append({
+            records.append({
 
                 "Strike": strike,
 
-                "CE LTP": ce.get("lastPrice", 0),
+                "CE_OI": ce["openInterest"] if ce else 0,
 
-                "CE OI": call_oi,
+                "CE_COI": ce["changeinOpenInterest"] if ce else 0,
 
-                "CE Chg OI": ce.get("changeinOpenInterest", 0),
+                "CE_LTP": ce["lastPrice"] if ce else 0,
 
-                "PE LTP": pe.get("lastPrice", 0),
+                "PE_OI": pe["openInterest"] if pe else 0,
 
-                "PE OI": put_oi,
+                "PE_COI": pe["changeinOpenInterest"] if pe else 0,
 
-                "PE Chg OI": pe.get("changeinOpenInterest", 0)
+                "PE_LTP": pe["lastPrice"] if pe else 0,
 
             })
 
-        df = pd.DataFrame(rows)
+        return pd.DataFrame(records)
 
-        pcr = round(total_put_oi / total_call_oi, 2) if total_call_oi else 0
+    except Exception:
+
+        return pd.DataFrame()
+
+
+def calculate_pcr(df):
+
+    if df.empty:
+        return None
+
+    put_oi = df["PE_OI"].sum()
+
+    call_oi = df["CE_OI"].sum()
+
+    if call_oi == 0:
+        return None
+
+    return round(put_oi / call_oi, 2)
+
+
+def highest_call_oi(df):
+
+    if df.empty:
+        return None
+
+    row = df.loc[df["CE_OI"].idxmax()]
+
+    return {
+        "Strike": row["Strike"],
+        "OI": row["CE_OI"]
+    }
+
+
+def highest_put_oi(df):
+
+    if df.empty:
+        return None
+
+    row = df.loc[df["PE_OI"].idxmax()]
+
+    return {
+        "Strike": row["Strike"],
+        "OI": row["PE_OI"]
+    }
+
+
+def market_sentiment(pcr):
+
+    if pcr is None:
+        return "UNKNOWN"
+
+    if pcr > 1.3:
+        return "BULLISH"
+
+    if pcr < 0.7:
+        return "BEARISH"
+
+    return "NEUTRAL"
+
+
+def option_summary(symbol="NIFTY"):
+
+    df = get_option_chain(symbol)
+
+    if df.empty:
 
         return {
 
-            "option_chain": df,
+            "PCR": None,
 
-            "PCR": pcr,
+            "Sentiment": "Unavailable",
 
-            "Support": put_support,
+            "HighestCallOI": None,
 
-            "Resistance": call_resistance,
+            "HighestPutOI": None,
 
-            "Call OI": max_call_oi,
-
-            "Put OI": max_put_oi
+            "Data": df
 
         }
 
-    except Exception as e:
+    pcr = calculate_pcr(df)
 
-        return {
+    return {
 
-            "error": str(e)
+        "PCR": pcr,
 
-        }
+        "Sentiment": market_sentiment(pcr),
 
+        "HighestCallOI": highest_call_oi(df),
 
-# -------------------------------------------------------
-# MARKET INTERPRETATION
-# -------------------------------------------------------
+        "HighestPutOI": highest_put_oi(df),
 
-def interpret_market(pcr):
+        "Data": df
 
-    if pcr >= 1.30:
-        return "★★★★★ Strong Bullish"
-
-    elif pcr >= 1.00:
-        return "★★★★ Bullish"
-
-    elif pcr >= 0.80:
-        return "★★★ Neutral"
-
-    elif pcr >= 0.60:
-        return "★★ Bearish"
-
-    else:
-        return "★★★★★ Strong Bearish"
+                   }
