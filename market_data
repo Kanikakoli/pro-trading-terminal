@@ -1,104 +1,114 @@
-import streamlit as st
 import yfinance as yf
 import pandas as pd
-from datetime import datetime
+import streamlit as st
 
-# --------------------------------------------------------
-# MARKET SYMBOL
-# --------------------------------------------------------
+# -------------------------------------------------------
+# SYMBOL MAPPING
+# -------------------------------------------------------
 
 SYMBOLS = {
-    "NIFTY 50": "^NSEI",
-    "BANK NIFTY": "^NSEBANK",
+    "NIFTY": "^NSEI",
+    "BANKNIFTY": "^NSEBANK",
     "SENSEX": "^BSESN",
-    "INDIA VIX": "^INDIAVIX",
-    "USD/INR": "INR=X",
-    "GOLD": "GC=F",
-    "SILVER": "SI=F",
-    "CRUDE OIL": "CL=F",
-    "NASDAQ": "^IXIC",
-    "DOW JONES": "^DJI",
-    "S&P 500": "^GSPC"
+    "FINNIFTY": "NIFTY_FIN_SERVICE.NS",
+    "INDIA VIX": "^INDIAVIX"
 }
 
 
-# --------------------------------------------------------
-# FETCH SINGLE SYMBOL
-# --------------------------------------------------------
+# -------------------------------------------------------
+# LIVE MARKET SNAPSHOT
+# -------------------------------------------------------
 
 @st.cache_data(ttl=10)
-def fetch_symbol(symbol):
-
-    try:
-
-        ticker = yf.Ticker(symbol)
-
-        info = ticker.fast_info
-
-        price = round(info["lastPrice"], 2)
-
-        previous = round(info["previousClose"], 2)
-
-        change = round(price - previous, 2)
-
-        change_percent = round((change / previous) * 100, 2)
-
-        return {
-            "price": price,
-            "change": change,
-            "change_percent": change_percent,
-            "status": "LIVE"
-        }
-
-    except Exception:
-
-        return {
-            "price": None,
-            "change": None,
-            "change_percent": None,
-            "status": "ERROR"
-        }
-
-
-# --------------------------------------------------------
-# FETCH ALL MARKETS
-# --------------------------------------------------------
-
-@st.cache_data(ttl=10)
-def fetch_market_data():
+def get_live_market_data():
 
     data = {}
 
-    for name, symbol in SYMBOLS.items():
+    for name, ticker in SYMBOLS.items():
 
-        data[name] = fetch_symbol(symbol)
+        try:
+
+            tk = yf.Ticker(ticker)
+
+            info = tk.fast_info
+
+            last = round(info.last_price, 2)
+            prev = round(info.previous_close, 2)
+
+            change = round(last - prev, 2)
+
+            pct = round((change / prev) * 100, 2)
+
+            data[name] = {
+
+                "price": last,
+                "change": change,
+                "percent": pct
+
+            }
+
+        except Exception:
+
+            data[name] = {
+
+                "price": None,
+                "change": None,
+                "percent": None
+
+            }
 
     return data
 
 
-# --------------------------------------------------------
+# -------------------------------------------------------
 # HISTORICAL DATA
-# --------------------------------------------------------
+# -------------------------------------------------------
 
-@st.cache_data(ttl=300)
-def get_history(symbol, period="3mo", interval="1d"):
+@st.cache_data(ttl=30)
+def get_historical_data(
+    symbol="NIFTY",
+    period="3mo",
+    interval="15m"
+):
 
-    ticker = yf.Ticker(symbol)
+    ticker = SYMBOLS.get(symbol, "^NSEI")
 
-    df = ticker.history(
+    df = yf.download(
+        ticker,
         period=period,
-        interval=interval
+        interval=interval,
+        progress=False,
+        auto_adjust=True
     )
 
+    if df.empty:
+        return None
+
     df.reset_index(inplace=True)
+
+    if "Datetime" in df.columns:
+        df.rename(columns={"Datetime": "Date"}, inplace=True)
+
+    if "Date" not in df.columns:
+        df.rename(columns={"index": "Date"}, inplace=True)
 
     return df
 
 
-# --------------------------------------------------------
-# LAST UPDATED
-# --------------------------------------------------------
+# -------------------------------------------------------
+# MARKET STATUS
+# -------------------------------------------------------
 
-def last_updated():
+def market_status():
 
-    return datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+    from datetime import datetime
+
+    now = datetime.now()
+
+    if now.weekday() >= 5:
+        return "Market Closed"
+
+    if 9 <= now.hour < 15:
+        return "Market Open"
+
+    return "Market Closed"
