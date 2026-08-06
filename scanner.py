@@ -1,184 +1,122 @@
-import pandas as pd
+"""
+=========================================================
+PRO AI TRADING TERMINAL
+Professional Stock Scanner
+Version : 1.0
+=========================================================
+"""
 
-# -------------------------------------------------------
-# SCANNER ENGINE
-# -------------------------------------------------------
-
-def classify_trade(signal, confidence):
-
-    if "STRONG BUY" in signal:
-        trade_type = "INTRADAY BUY"
-
-    elif signal == "★★★★ BUY":
-        trade_type = "BUY"
-
-    elif "SELL" in signal:
-        trade_type = "SELL"
-
-    else:
-        trade_type = "HOLD"
-
-    return trade_type
+from core.market_data import safe_history
+from core.indicators import add_indicators, latest_indicators
+from core.ai_engine import generate_signal
 
 
-# -------------------------------------------------------
-# HERO ZERO SCANNER
-# -------------------------------------------------------
+WATCHLIST = [
 
-def hero_zero(option_df):
+    "RELIANCE",
+    "TCS",
+    "INFY",
+    "HDFCBANK",
+    "ICICIBANK",
+    "SBIN",
 
-    if option_df is None or len(option_df) == 0:
-        return pd.DataFrame()
+    "NIFTY",
+    "BANKNIFTY"
 
-    df = option_df.copy()
-
-    ce = df[
-        (df["CE LTP"] > 5) &
-        (df["CE LTP"] < 50)
-    ]
-
-    pe = df[
-        (df["PE LTP"] > 5) &
-        (df["PE LTP"] < 50)
-    ]
-
-    ce = ce.sort_values(
-        by="CE OI",
-        ascending=False
-    ).head(5)
-
-    pe = pe.sort_values(
-        by="PE OI",
-        ascending=False
-    ).head(5)
-
-    return {
-        "CALLS": ce,
-        "PUTS": pe
-    }
+]
 
 
-# -------------------------------------------------------
-# SCALPING ENGINE
-# -------------------------------------------------------
+def scan_symbol(symbol):
 
-def scalping(indicator):
+    try:
 
-    score = 0
+        df = safe_history(symbol, "15m")
 
-    if indicator["RSI"] > 60:
-        score += 20
+        if df.empty:
 
-    if indicator["ADX"] > 25:
-        score += 20
+            return None
 
-    if indicator["EMA9"] > indicator["EMA20"]:
-        score += 20
+        df = add_indicators(df)
 
-    if indicator["MACD"] > 0:
-        score += 20
+        ind = latest_indicators(df)
 
-    if indicator["VWAP"] < indicator["EMA9"]:
-        score += 20
-
-    if score >= 80:
+        ai = generate_signal(ind)
 
         return {
 
-            "Trade": "SCALPING BUY",
+            "Symbol": symbol,
 
-            "Confidence": score
+            "Price": ind["Price"],
 
-        }
+            "Signal": ai["Signal"],
 
-    return {
+            "Confidence": ai["Confidence"],
 
-        "Trade": "WAIT",
+            "RSI": ind["RSI"],
 
-        "Confidence": score
+            "ADX": ind["ADX"],
 
-    }
-
-
-# -------------------------------------------------------
-# BTST SCANNER
-# -------------------------------------------------------
-
-def btst(indicator, option_data):
-
-    score = 0
-
-    if indicator["EMA20"] > indicator["EMA50"]:
-        score += 20
-
-    if indicator["ADX"] > 25:
-        score += 20
-
-    if indicator["RSI"] > 55:
-        score += 20
-
-    if option_data:
-
-        if option_data["PCR"] > 1:
-            score += 20
-
-    if score >= 70:
-
-        return {
-
-            "Trade": "BTST BUY",
-
-            "Score": score
+            "Reasons": ", ".join(ai["Reasons"])
 
         }
 
-    return {
+    except:
 
-        "Trade": "NO TRADE",
-
-        "Score": score
-
-    }
+        return None
 
 
-# -------------------------------------------------------
-# MARKET STRENGTH
-# -------------------------------------------------------
+def scan_market():
 
-def market_strength(indicator, option_data):
+    results = []
 
-    strength = 0
+    for symbol in WATCHLIST:
 
-    strength += indicator["RSI"]
+        item = scan_symbol(symbol)
 
-    strength += indicator["ADX"]
+        if item:
 
-    if option_data:
+            results.append(item)
 
-        strength += option_data["PCR"] * 20
+    results.sort(
 
-    strength = round(strength / 3, 2)
+        key=lambda x: x["Confidence"],
 
-    if strength >= 70:
+        reverse=True
 
-        status = "VERY STRONG"
+    )
 
-    elif strength >= 55:
+    return results
 
-        status = "BULLISH"
 
-    elif strength >= 45:
+def top_buys(results):
 
-        status = "NEUTRAL"
+    return [
 
-    else:
+        x for x in results
 
-        status = "WEAK"
+        if x["Signal"] in [
 
-    return {
+            "BUY",
 
-        "Strength": strength,
+            "STRONG BUY"
 
-        "Status": status
+        ]
 
-      }
+    ]
+
+
+def top_sells(results):
+
+    return [
+
+        x for x in results
+
+        if x["Signal"] in [
+
+            "SELL",
+
+            "STRONG SELL"
+
+        ]
+
+    ]
