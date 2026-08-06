@@ -1,158 +1,143 @@
+"""
+=========================================================
+PRO AI TRADING TERMINAL
+Technical Indicators Engine
+Version : 1.0
+=========================================================
+"""
+
 import pandas as pd
 import ta
 
-# --------------------------------------------------
-# TECHNICAL INDICATORS ENGINE
-# --------------------------------------------------
 
-def calculate_indicators(df):
+def add_indicators(df):
 
-    if df is None or len(df) < 50:
-        return None
+    if df.empty:
+        return df
 
-    df = df.copy()
+    data = df.copy()
 
-    # ----------------------------
+    # ------------------------
     # EMA
-    # ----------------------------
-
-    df["EMA_9"] = ta.trend.EMAIndicator(
-        close=df["Close"],
-        window=9
-    ).ema_indicator()
-
-    df["EMA_20"] = ta.trend.EMAIndicator(
-        close=df["Close"],
+    # ------------------------
+    data["EMA20"] = ta.trend.EMAIndicator(
+        close=data["Close"],
         window=20
     ).ema_indicator()
 
-    df["EMA_50"] = ta.trend.EMAIndicator(
-        close=df["Close"],
+    data["EMA50"] = ta.trend.EMAIndicator(
+        close=data["Close"],
         window=50
     ).ema_indicator()
 
-    # ----------------------------
-    # RSI
-    # ----------------------------
+    data["EMA200"] = ta.trend.EMAIndicator(
+        close=data["Close"],
+        window=200
+    ).ema_indicator()
 
-    df["RSI"] = ta.momentum.RSIIndicator(
-        close=df["Close"],
+    # ------------------------
+    # RSI
+    # ------------------------
+    data["RSI"] = ta.momentum.RSIIndicator(
+        close=data["Close"],
         window=14
     ).rsi()
 
-    # ----------------------------
+    # ------------------------
     # MACD
-    # ----------------------------
+    # ------------------------
+    macd = ta.trend.MACD(
+        close=data["Close"]
+    )
 
-    macd = ta.trend.MACD(df["Close"])
+    data["MACD"] = macd.macd()
+    data["MACD_SIGNAL"] = macd.macd_signal()
+    data["MACD_HIST"] = macd.macd_diff()
 
-    df["MACD"] = macd.macd()
-    df["MACD_SIGNAL"] = macd.macd_signal()
-    df["MACD_HIST"] = macd.macd_diff()
-
-    # ----------------------------
+    # ------------------------
     # ADX
-    # ----------------------------
-
+    # ------------------------
     adx = ta.trend.ADXIndicator(
-        high=df["High"],
-        low=df["Low"],
-        close=df["Close"]
+        high=data["High"],
+        low=data["Low"],
+        close=data["Close"],
+        window=14
     )
 
-    df["ADX"] = adx.adx()
+    data["ADX"] = adx.adx()
 
-    # ----------------------------
+    # ------------------------
     # ATR
-    # ----------------------------
-
+    # ------------------------
     atr = ta.volatility.AverageTrueRange(
-        high=df["High"],
-        low=df["Low"],
-        close=df["Close"]
+        high=data["High"],
+        low=data["Low"],
+        close=data["Close"],
+        window=14
     )
 
-    df["ATR"] = atr.average_true_range()
+    data["ATR"] = atr.average_true_range()
 
-    # ----------------------------
+    # ------------------------
     # Bollinger Bands
-    # ----------------------------
-
-    bb = ta.volatility.BollingerBands(df["Close"])
-
-    df["BB_UPPER"] = bb.bollinger_hband()
-    df["BB_LOWER"] = bb.bollinger_lband()
-
-    # ----------------------------
-    # VWAP
-    # ----------------------------
-
-    vwap = ta.volume.VolumeWeightedAveragePrice(
-        high=df["High"],
-        low=df["Low"],
-        close=df["Close"],
-        volume=df["Volume"]
+    # ------------------------
+    bb = ta.volatility.BollingerBands(
+        close=data["Close"],
+        window=20,
+        window_dev=2
     )
 
-    df["VWAP"] = vwap.volume_weighted_average_price()
+    data["BB_UPPER"] = bb.bollinger_hband()
+    data["BB_MIDDLE"] = bb.bollinger_mavg()
+    data["BB_LOWER"] = bb.bollinger_lband()
 
-    return df
-
-
-# --------------------------------------------------
-# AI SIGNAL ENGINE
-# --------------------------------------------------
-
-def generate_signal(df):
-
-    last = df.iloc[-1]
-
-    score = 0
-
-    # EMA Trend
-    if last["EMA_9"] > last["EMA_20"]:
-        score += 20
-
-    if last["EMA_20"] > last["EMA_50"]:
-        score += 20
-
-    # RSI
-    if 55 <= last["RSI"] <= 70:
-        score += 15
-
-    # MACD
-    if last["MACD"] > last["MACD_SIGNAL"]:
-        score += 20
-
+    # ------------------------
     # VWAP
-    if last["Close"] > last["VWAP"]:
-        score += 15
+    # ------------------------
+    vwap = ta.volume.VolumeWeightedAveragePrice(
+        high=data["High"],
+        low=data["Low"],
+        close=data["Close"],
+        volume=data["Volume"]
+    )
 
-    # ADX
-    if last["ADX"] > 25:
-        score += 10
+    data["VWAP"] = vwap.volume_weighted_average_price()
 
-    if score >= 80:
-        signal = "★★★★★ STRONG BUY"
+    return data
 
-    elif score >= 60:
-        signal = "★★★★ BUY"
 
-    elif score >= 40:
-        signal = "★★★ HOLD"
+# =========================================================
+# Latest Indicator Values
+# =========================================================
 
-    else:
-        signal = "★★ SELL"
+def latest_indicators(df):
+
+    row = df.iloc[-1]
 
     return {
-        "Signal": signal,
-        "Score": score,
-        "RSI": round(last["RSI"], 2),
-        "ADX": round(last["ADX"], 2),
-        "ATR": round(last["ATR"], 2),
-        "VWAP": round(last["VWAP"], 2),
-        "EMA9": round(last["EMA_9"], 2),
-        "EMA20": round(last["EMA_20"], 2),
-        "EMA50": round(last["EMA_50"], 2),
-        "MACD": round(last["MACD"], 2)
-  }
+
+        "Price": round(row["Close"],2),
+
+        "EMA20": round(row["EMA20"],2),
+
+        "EMA50": round(row["EMA50"],2),
+
+        "EMA200": round(row["EMA200"],2),
+
+        "RSI": round(row["RSI"],2),
+
+        "MACD": round(row["MACD"],2),
+
+        "MACD_SIGNAL": round(row["MACD_SIGNAL"],2),
+
+        "ADX": round(row["ADX"],2),
+
+        "ATR": round(row["ATR"],2),
+
+        "VWAP": round(row["VWAP"],2),
+
+        "BB_UPPER": round(row["BB_UPPER"],2),
+
+        "BB_LOWER": round(row["BB_LOWER"],2)
+
+    }
