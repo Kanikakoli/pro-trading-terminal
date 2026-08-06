@@ -2,102 +2,201 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 
-# Import our modules
-from market_data import get_live_market_data
-from indicators import calculate_indicators, generate_signal
-from option_chain import fetch_option_chain, interpret_market
-from ai_engine import generate_trade, risk_management
-from scanner import hero_zero, scalping, btst, market_strength
-from charts import (
-    candlestick_chart,
-    rsi_chart,
-    macd_chart,
-    oi_chart,
-    dashboard_gauge,
-)
-
-# ----------------------------------------------------
-# PAGE CONFIG
-# ----------------------------------------------------
+# ==========================
+# PAGE CONFIGURATION
+# ==========================
 
 st.set_page_config(
     page_title="PRO AI Trading Terminal",
     page_icon="📈",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="expanded"
 )
 
-# ----------------------------------------------------
-# LOGIN
-# ----------------------------------------------------
+# ==========================
+# IMPORT MODULES
+# ==========================
 
-PASSWORD = "pro12345"
+from core.market_data import get_live_indices
+from core.option_chain import option_summary
+from core.scanner import scan_market
 
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
+# ==========================
+# CUSTOM CSS
+# ==========================
 
-if not st.session_state.logged_in:
+st.markdown("""
+<style>
 
-    st.title("🔒 PRO AI Trading Terminal")
+.main{
+    background:#0E1117;
+}
 
-    pwd = st.text_input(
-        "Password",
-        type="password"
-    )
+.card{
+background:#1A1D24;
+padding:18px;
+border-radius:15px;
+border:1px solid #2B3139;
+margin-bottom:15px;
+}
 
-    if st.button("Login"):
+.title{
+font-size:28px;
+font-weight:bold;
+color:white;
+}
 
-        if pwd == PASSWORD:
-            st.session_state.logged_in = True
-            st.rerun()
+.small{
+color:#B0B8C1;
+font-size:14px;
+}
 
-        else:
-            st.error("Wrong Password")
+.buy{
+color:#00E676;
+font-weight:bold;
+}
 
-    st.stop()
+.sell{
+color:#FF5252;
+font-weight:bold;
+}
 
-# ----------------------------------------------------
+</style>
+""", unsafe_allow_html=True)
+
+# ==========================
 # SIDEBAR
-# ----------------------------------------------------
+# ==========================
 
-st.sidebar.title("⚙ Settings")
+st.sidebar.title("📈 PRO TERMINAL")
 
-symbol = st.sidebar.selectbox(
-    "Index",
+page = st.sidebar.radio(
+    "Navigation",
     [
-        "NIFTY",
-        "BANKNIFTY"
+        "Dashboard",
+        "AI Scanner",
+        "Intraday",
+        "Hero Zero",
+        "Scalping",
+        "BTST",
+        "Option Chain",
+        "Charts",
+        "Global",
+        "Mutual Funds"
     ]
 )
 
-interval = st.sidebar.selectbox(
-    "Timeframe",
-    [
-        "5m",
-        "15m",
-        "30m",
-        "1h",
-        "1d"
-    ]
-)
+st.sidebar.markdown("---")
 
 refresh = st.sidebar.slider(
-    "Refresh (sec)",
+    "Auto Refresh (seconds)",
     5,
     60,
     15
 )
 
-st.sidebar.success("Backend Connected")
+st.sidebar.success("Status : LIVE")
 
-# ----------------------------------------------------
+# ==========================
 # HEADER
-# ----------------------------------------------------
+# ==========================
 
-st.title("🚀 PRO AI Trading Terminal")
+st.markdown(
+f"""
+<div class="title">
+PRO AI TRADING TERMINAL
+</div>
 
-st.caption(
-    f"Live Market | {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}"
+<div class="small">
+
+{datetime.now().strftime("%d %b %Y | %H:%M:%S")}
+
+</div>
+
+""",
+unsafe_allow_html=True
 )
 
 st.divider()
+
+# ==========================
+# DASHBOARD
+# ==========================
+
+if page=="Dashboard":
+
+    st.subheader("Live Market")
+
+    indices=get_live_indices()
+
+    cols=st.columns(len(indices))
+
+    for col,(name,data) in zip(cols,indices.items()):
+
+        change=data["change"]
+
+        emoji="🟢" if change>=0 else "🔴"
+
+        col.metric(
+            name,
+            f"{data['price']:.2f}",
+            f"{change:.2f}%"
+        )
+
+    st.divider()
+
+    left,right=st.columns([2,1])
+
+    with left:
+
+        st.subheader("🔥 AI Market Scanner")
+
+        scan=scan_market()
+
+        if len(scan):
+
+            df=pd.DataFrame(scan)
+
+            st.dataframe(
+                df,
+                use_container_width=True,
+                hide_index=True
+            )
+
+        else:
+
+            st.warning("No signals available.")
+
+    with right:
+
+        st.subheader("Option Chain Summary")
+
+        summary=option_summary("NIFTY")
+
+        st.metric(
+            "PCR",
+            summary["PCR"]
+        )
+
+        st.metric(
+            "Sentiment",
+            summary["Sentiment"]
+        )
+
+        if summary["HighestCallOI"]:
+
+            st.write(
+                "Highest Call OI",
+                summary["HighestCallOI"]["Strike"]
+            )
+
+        if summary["HighestPutOI"]:
+
+            st.write(
+                "Highest Put OI",
+                summary["HighestPutOI"]["Strike"]
+            )
+
+    st.divider()
+
+    st.info("Professional Dashboard Version 3.0")
