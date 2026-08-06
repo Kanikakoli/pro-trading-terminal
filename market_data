@@ -4,7 +4,7 @@ import pandas as pd
 from datetime import datetime
 
 # --------------------------------------------------------
-# MARKET SYMBOLS
+# MARKET SYMBOL
 # --------------------------------------------------------
 
 SYMBOLS = {
