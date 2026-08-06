@@ -1,1 +1,104 @@
+import streamlit as st
+import yfinance as yf
+import pandas as pd
+from datetime import datetime
 
+# --------------------------------------------------------
+# MARKET SYMBOLS
+# --------------------------------------------------------
+
+SYMBOLS = {
+    "NIFTY 50": "^NSEI",
+    "BANK NIFTY": "^NSEBANK",
+    "SENSEX": "^BSESN",
+    "INDIA VIX": "^INDIAVIX",
+    "USD/INR": "INR=X",
+    "GOLD": "GC=F",
+    "SILVER": "SI=F",
+    "CRUDE OIL": "CL=F",
+    "NASDAQ": "^IXIC",
+    "DOW JONES": "^DJI",
+    "S&P 500": "^GSPC"
+}
+
+
+# --------------------------------------------------------
+# FETCH SINGLE SYMBOL
+# --------------------------------------------------------
+
+@st.cache_data(ttl=10)
+def fetch_symbol(symbol):
+
+    try:
+
+        ticker = yf.Ticker(symbol)
+
+        info = ticker.fast_info
+
+        price = round(info["lastPrice"], 2)
+
+        previous = round(info["previousClose"], 2)
+
+        change = round(price - previous, 2)
+
+        change_percent = round((change / previous) * 100, 2)
+
+        return {
+            "price": price,
+            "change": change,
+            "change_percent": change_percent,
+            "status": "LIVE"
+        }
+
+    except Exception:
+
+        return {
+            "price": None,
+            "change": None,
+            "change_percent": None,
+            "status": "ERROR"
+        }
+
+
+# --------------------------------------------------------
+# FETCH ALL MARKETS
+# --------------------------------------------------------
+
+@st.cache_data(ttl=10)
+def fetch_market_data():
+
+    data = {}
+
+    for name, symbol in SYMBOLS.items():
+
+        data[name] = fetch_symbol(symbol)
+
+    return data
+
+
+# --------------------------------------------------------
+# HISTORICAL DATA
+# --------------------------------------------------------
+
+@st.cache_data(ttl=300)
+def get_history(symbol, period="3mo", interval="1d"):
+
+    ticker = yf.Ticker(symbol)
+
+    df = ticker.history(
+        period=period,
+        interval=interval
+    )
+
+    df.reset_index(inplace=True)
+
+    return df
+
+
+# --------------------------------------------------------
+# LAST UPDATED
+# --------------------------------------------------------
+
+def last_updated():
+
+    return datetime.now().strftime("%d-%m-%Y %H:%M:%S")
