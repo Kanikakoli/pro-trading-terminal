@@ -1,13 +1,38 @@
-APP_NAME = "PRO AI TRADING TERMINAL"
+# ==========================================================
+# PRO AI TRADING TERMINAL CONFIGURATION
+# ==========================================================
 
-PASSWORD = "pro12345"
+# Login
+APP_PASSWORD = "pro12345"
 
-REFRESH_INTERVAL = 3
+# Default Symbol
+DEFAULT_SYMBOL = "NIFTY"
 
-DEFAULT_INDEX = "^NSEI"
+# Default Interval
+DEFAULT_INTERVAL = "15m"
 
-BANKNIFTY = "^NSEBANK"
+# Historical Data
+DEFAULT_PERIOD = "3mo"
 
-SENSEX = "^BSESN"
+# Cache Time (seconds)
+MARKET_CACHE = 10
+HISTORICAL_CACHE = 30
+OPTION_CHAIN_CACHE = 15
 
-TIMEZONE = "Asia/Kolkata"
+# Risk Management
+DEFAULT_RISK_PERCENT = 2
+
+# Targets
+TARGET1_MULTIPLIER = 1.03
+TARGET2_MULTIPLIER = 1.06
+TARGET3_MULTIPLIER = 1.10
+
+# Stoploss
+STOPLOSS_MULTIPLIER = 0.97
+
+# Scanner
+MIN_CONFIDENCE = 70
+
+# Theme
+APP_NAME = "PRO AI Trading Terminal"
+APP_ICON = "📈"
