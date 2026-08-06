@@ -6,46 +6,99 @@ Version : 2.0
 =========================================================
 """
 
-import time
 import pandas as pd
 import streamlit as st
 import yfinance as yf
 
-# =========================================================
-# Supported Symbols
-# =========================================================
+
+# ======================================================
+# SYMBOL MAPPING
+# ======================================================
 
 SYMBOLS = {
+
+    # Indices
     "NIFTY": "^NSEI",
     "BANKNIFTY": "^NSEBANK",
     "SENSEX": "^BSESN",
     "FINNIFTY": "NIFTY_FIN_SERVICE.NS",
     "MIDCPNIFTY": "NIFTY_MID_SELECT.NS",
 
-    "RELIANCE": "RELIANCE.NS",
-    "TCS": "TCS.NS",
-    "INFY": "INFY.NS",
+    # Banking
     "HDFCBANK": "HDFCBANK.NS",
     "ICICIBANK": "ICICIBANK.NS",
     "SBIN": "SBIN.NS",
+    "AXISBANK": "AXISBANK.NS",
+    "KOTAKBANK": "KOTAKBANK.NS",
+    "PNB": "PNB.NS",
+    "CANBK": "CANBK.NS",
+
+    # IT
+    "TCS": "TCS.NS",
+    "INFY": "INFY.NS",
+    "HCLTECH": "HCLTECH.NS",
+
+    # Energy
+    "RELIANCE": "RELIANCE.NS",
+    "ONGC": "ONGC.NS",
+    "IOC": "IOC.NS",
+    "COALINDIA": "COALINDIA.NS",
+    "NTPC": "NTPC.NS",
+    "POWERGRID": "POWERGRID.NS",
+
+    # Auto
+    "MARUTI": "MARUTI.NS",
+    "M&M": "M&M.NS",
+
+    # Pharma
+    "SUNPHARMA": "SUNPHARMA.NS",
+
+    # Metals
+    "TATASTEEL": "TATASTEEL.NS",
+    "JSWSTEEL": "JSWSTEEL.NS",
+    "HINDALCO": "HINDALCO.NS",
+    "SAIL": "SAIL.NS",
+
+    # Others
+    "LT": "LT.NS",
+    "ITC": "ITC.NS",
+    "BHARTIARTL": "BHARTIARTL.NS",
+    "ULTRACEMCO": "ULTRACEMCO.NS",
+    "TITAN": "TITAN.NS",
+    "BAJFINANCE": "BAJFINANCE.NS",
+    "ADANIENT": "ADANIENT.NS",
+    "ADANIPORTS": "ADANIPORTS.NS",
+    "BEL": "BEL.NS",
+    "BHEL": "BHEL.NS",
+    "DLF": "DLF.NS",
+    "LODHA": "LODHA.NS",
+    "INDIGO": "INDIGO.NS"
 }
 
-# =========================================================
-# Timeframes
-# =========================================================
+
+# ======================================================
+# TIMEFRAMES
+# ======================================================
 
 TIMEFRAMES = {
+
     "1m": "1d",
+    "2m": "5d",
     "5m": "5d",
     "15m": "1mo",
     "30m": "1mo",
+    "60m": "3mo",
+    "90m": "3mo",
     "1h": "3mo",
-    "1d": "1y"
+    "1d": "1y",
+    "1wk": "5y"
+
 }
 
-# =========================================================
-# Download Historical Data
-# =========================================================
+
+# ======================================================
+# HISTORICAL DATA
+# ======================================================
 
 @st.cache_data(ttl=30)
 def get_history(symbol, interval="15m"):
@@ -54,27 +107,106 @@ def get_history(symbol, interval="15m"):
 
     period = TIMEFRAMES.get(interval, "1mo")
 
+    df = yf.download(
+        ticker,
+        interval=interval,
+        period=period,
+        progress=False,
+        auto_adjust=True
+    )
+
+    if df.empty:
+        return pd.DataFrame()
+
+    df = df.reset_index()
+
+    return df
+
+
+# ======================================================
+# SAFE HISTORY
+# ======================================================
+
+def safe_history(symbol, interval="15m"):
+
     try:
-
-        df = yf.download(
-            ticker,
-            period=period,
-            interval=interval,
-            auto_adjust=True,
-            progress=False,
-            threads=False
-        )
-
-        if df.empty:
-            return pd.DataFrame()
-
-        df = df.reset_index()
-
-        return df
+        return get_history(symbol, interval)
 
     except Exception:
-
         return pd.DataFrame()
 
 
-# Back
+# ======================================================
+# LIVE PRICE
+# ======================================================
+
+@st.cache_data(ttl=5)
+def get_ltp(symbol):
+
+    ticker = SYMBOLS.get(symbol, symbol)
+
+    try:
+
+        obj = yf.Ticker(ticker)
+
+        info = obj.fast_info
+
+        return {
+
+            "price": round(float(info["lastPrice"]), 2),
+
+            "previous_close": round(float(info["previousClose"]), 2),
+
+            "day_high": round(float(info["dayHigh"]), 2),
+
+            "day_low": round(float(info["dayLow"]), 2),
+
+            "volume": int(info["lastVolume"])
+
+        }
+
+    except Exception:
+
+        return {
+
+            "price": 0,
+
+            "previous_close": 0,
+
+            "day_high": 0,
+
+            "day_low": 0,
+
+            "volume": 0
+
+        }
+
+
+# ======================================================
+# CHANGE %
+# ======================================================
+
+def percentage_change(price, previous):
+
+    if previous == 0:
+        return 0
+
+    return round(((price - previous) / previous) * 100, 2)
+
+
+# ======================================================
+# LIVE SNAPSHOT
+# ======================================================
+
+def market_snapshot(symbol):
+
+    live = get_ltp(symbol)
+
+    live["change"] = percentage_change(
+
+        live["price"],
+        live["previous_close"]
+
+    )
+
+    return live
