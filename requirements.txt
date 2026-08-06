@@ -1,1 +1,13 @@
 
+streamlit
+pandas
+numpy
+plotly
+yfinance
+requests
+beautifulsoup4
+lxml
+ta
+scipy
+python-dateutil
+pytz
