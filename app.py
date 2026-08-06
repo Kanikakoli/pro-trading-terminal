@@ -2,34 +2,41 @@
 =========================================================
 PRO AI TRADING TERMINAL
 Dashboard
-Version : 1.0
+Version : 2.0
 =========================================================
 """
 
 import streamlit as st
 import pandas as pd
-from core.market_data import safe_history
+
+from core.market_data import market_snapshot, safe_history
 from core.indicators import add_indicators
+from core.scanner import scanner_dataframe
 from components.chart import candlestick_chart
 
-from core.market_data import market_snapshot
-from core.scanner import scanner_dataframe
+# ----------------------------------------------------
+# PAGE CONFIG
+# ----------------------------------------------------
 
 st.set_page_config(
-    page_title="PRO AI TRADING TERMINAL",
+    page_title="PRO AI Trading Terminal",
     page_icon="📈",
     layout="wide"
 )
 
-st.title("📈 PRO AI TRADING TERMINAL")
+# ----------------------------------------------------
+# TITLE
+# ----------------------------------------------------
 
-st.caption("Live Market Dashboard")
+st.title("📈 PRO AI Trading Terminal")
+
+st.caption("Professional AI Based Trading Dashboard")
 
 st.divider()
 
-# =========================
+# ----------------------------------------------------
 # LIVE MARKET
-# =========================
+# ----------------------------------------------------
 
 c1, c2, c3 = st.columns(3)
 
@@ -38,61 +45,42 @@ bank = market_snapshot("BANKNIFTY")
 sensex = market_snapshot("SENSEX")
 
 with c1:
-
     st.metric(
-
         "NIFTY",
-
         nifty["price"],
-
         f'{nifty["change"]}%'
-
     )
 
 with c2:
-
     st.metric(
-
         "BANKNIFTY",
-
         bank["price"],
-
         f'{bank["change"]}%'
-
     )
 
 with c3:
-
     st.metric(
-
         "SENSEX",
-
         sensex["price"],
-
         f'{sensex["change"]}%'
-
     )
 
 st.divider()
 
-# =========================
-# AI SCANNER
-# =========================
+# ----------------------------------------------------
+# AI MARKET SCANNER
+# ----------------------------------------------------
 
-st.subheader("🔥 AI Trade Scanner")
+st.subheader("🔥 AI Scanner")
 
-df = scanner_dataframe()
+scanner = scanner_dataframe()
 
-if len(df):
+if len(scanner):
 
     st.dataframe(
-
-        df,
-
+        scanner,
         use_container_width=True,
-
         hide_index=True
-
     )
 
 else:
@@ -101,28 +89,119 @@ else:
 
 st.divider()
 
-# =========================
+# ----------------------------------------------------
 # TOP BUY
-# =========================
+# ----------------------------------------------------
 
-if len(df):
+st.subheader("🚀 Top BUY Opportunities")
 
-    buy = df[df["Signal"].isin(["BUY", "STRONG BUY"])]
+if len(scanner):
 
-    if len(buy):
-
-        st.success("Best Trade Right Now")
-
-        st.dataframe(
-
-            buy.head(5),
-
-            use_container_width=True,
-
-            hide_index=True
-
+    buy = scanner[
+        scanner["Signal"].isin(
+            [
+                "BUY",
+                "STRONG BUY"
+            ]
         )
+    ]
+
+    st.dataframe(
+        buy.head(5),
+        use_container_width=True,
+        hide_index=True
+    )
+
+else:
+
+    st.info("No Buy Signals")
 
 st.divider()
 
-st.caption("Professional AI Trading Terminal")
+# ----------------------------------------------------
+# TOP SELL
+# ----------------------------------------------------
+
+st.subheader("🔻 Top SELL Opportunities")
+
+if len(scanner):
+
+    sell = scanner[
+        scanner["Signal"].isin(
+            [
+                "SELL",
+                "STRONG SELL"
+            ]
+        )
+    ]
+
+    st.dataframe(
+        sell.head(5),
+        use_container_width=True,
+        hide_index=True
+    )
+
+else:
+
+    st.info("No Sell Signals")
+
+st.divider()
+
+# ----------------------------------------------------
+# LIVE CHART
+# ----------------------------------------------------
+
+st.subheader("📈 Live Candlestick Chart")
+
+col1, col2 = st.columns(2)
+
+with col1:
+
+    symbol = st.selectbox(
+
+        "Select Symbol",
+
+        [
+
+            "NIFTY",
+            "BANKNIFTY",
+            "RELIANCE",
+            "TCS",
+            "INFY",
+            "HDFCBANK",
+            "ICICIBANK",
+            "SBIN"
+
+        ]
+
+    )
+
+with col2:
+
+    timeframe = st.selectbox(
+
+        "Timeframe",
+
+        [
+
+            "5m",
+            "15m",
+            "30m",
+            "1h",
+            "1d"
+
+        ]
+
+    )
+
+df = safe_history(symbol, timeframe)
+
+if not df.empty:
+
+    df = add_indicators(df)
+
+    fig = candlestick_chart(df, symbol)
+
+    st.plotly_chart(
+        fig,
+        use
