@@ -2,148 +2,106 @@
 =========================================================
 PRO AI TRADING TERMINAL
 Option Chain Engine
-Version : 1.0
+Version 1.0
 =========================================================
 """
 
+import requests
 import pandas as pd
 
-try:
-    from nsepython import option_chain
-except:
-    option_chain = None
+
+HEADERS = {
+
+    "User-Agent":
+    "Mozilla/5.0"
+
+}
 
 
-def get_option_chain(symbol="NIFTY"):
+def get_option_chain():
 
-    if option_chain is None:
-        return pd.DataFrame()
+    url = "https://www.nseindia.com/api/option-chain-indices?symbol=NIFTY"
 
-    try:
+    session = requests.Session()
 
-        data = option_chain(symbol)
+    session.get(
+        "https://www.nseindia.com",
+        headers=HEADERS,
+        timeout=10
+    )
 
-        records = []
+    data = session.get(
+        url,
+        headers=HEADERS,
+        timeout=10
+    ).json()
 
-        for row in data["records"]["data"]:
+    records = data["records"]["data"]
 
-            strike = row.get("strikePrice")
+    rows = []
 
-            ce = row.get("CE")
-            pe = row.get("PE")
+    for item in records:
 
-            records.append({
+        strike = item["strikePrice"]
 
-                "Strike": strike,
+        ce = item.get("CE", {})
 
-                "CE_OI": ce["openInterest"] if ce else 0,
+        pe = item.get("PE", {})
 
-                "CE_COI": ce["changeinOpenInterest"] if ce else 0,
+        rows.append({
 
-                "CE_LTP": ce["lastPrice"] if ce else 0,
+            "Strike": strike,
 
-                "PE_OI": pe["openInterest"] if pe else 0,
+            "Call OI": ce.get("openInterest", 0),
 
-                "PE_COI": pe["changeinOpenInterest"] if pe else 0,
+            "Call ChgOI": ce.get("changeinOpenInterest", 0),
 
-                "PE_LTP": pe["lastPrice"] if pe else 0,
+            "Call LTP": ce.get("lastPrice", 0),
 
-            })
+            "Put LTP": pe.get("lastPrice", 0),
 
-        return pd.DataFrame(records)
+            "Put ChgOI": pe.get("changeinOpenInterest", 0),
 
-    except Exception:
+            "Put OI": pe.get("openInterest", 0)
 
-        return pd.DataFrame()
+        })
 
-
-def calculate_pcr(df):
-
-    if df.empty:
-        return None
-
-    put_oi = df["PE_OI"].sum()
-
-    call_oi = df["CE_OI"].sum()
-
-    if call_oi == 0:
-        return None
-
-    return round(put_oi / call_oi, 2)
+    return pd.DataFrame(rows)
 
 
-def highest_call_oi(df):
+def pcr(df):
 
-    if df.empty:
-        return None
+    put = df["Put OI"].sum()
 
-    row = df.loc[df["CE_OI"].idxmax()]
+    call = df["Call OI"].sum()
 
-    return {
-        "Strike": row["Strike"],
-        "OI": row["CE_OI"]
-    }
+    if call == 0:
+        return 0
 
-
-def highest_put_oi(df):
-
-    if df.empty:
-        return None
-
-    row = df.loc[df["PE_OI"].idxmax()]
-
-    return {
-        "Strike": row["Strike"],
-        "OI": row["PE_OI"]
-    }
+    return round(put / call, 2)
 
 
-def market_sentiment(pcr):
+def support(df):
 
-    if pcr is None:
-        return "UNKNOWN"
+    row = df.sort_values(
 
-    if pcr > 1.3:
-        return "BULLISH"
+        "Put OI",
 
-    if pcr < 0.7:
-        return "BEARISH"
+        ascending=False
 
-    return "NEUTRAL"
+    ).iloc[0]
+
+    return row["Strike"]
 
 
-def option_summary(symbol="NIFTY"):
+def resistance(df):
 
-    df = get_option_chain(symbol)
+    row = df.sort_values(
 
-    if df.empty:
+        "Call OI",
 
-        return {
+        ascending=False
 
-            "PCR": None,
+    ).iloc[0]
 
-            "Sentiment": "Unavailable",
-
-            "HighestCallOI": None,
-
-            "HighestPutOI": None,
-
-            "Data": df
-
-        }
-
-    pcr = calculate_pcr(df)
-
-    return {
-
-        "PCR": pcr,
-
-        "Sentiment": market_sentiment(pcr),
-
-        "HighestCallOI": highest_call_oi(df),
-
-        "HighestPutOI": highest_put_oi(df),
-
-        "Data": df
-
-                   }
+    return row["Strike"]
