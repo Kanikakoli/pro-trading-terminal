@@ -1,114 +1,157 @@
-import yfinance as yf
+"""
+==========================================================
+PRO AI TRADING TERMINAL
+Market Data Engine
+Version : 1.0
+==========================================================
+"""
+
+import time
+from datetime import datetime
+
 import pandas as pd
 import streamlit as st
+import yfinance as yf
 
-# -------------------------------------------------------
-# SYMBOL MAPPING
-# -------------------------------------------------------
+
+# --------------------------------------------
+# Supported Symbols
+# --------------------------------------------
 
 SYMBOLS = {
-    "NIFTY": "^NSEI",
-    "BANKNIFTY": "^NSEBANK",
-    "SENSEX": "^BSESN",
-    "FINNIFTY": "NIFTY_FIN_SERVICE.NS",
-    "INDIA VIX": "^INDIAVIX"
+
+    "NIFTY":"^NSEI",
+
+    "BANKNIFTY":"^NSEBANK",
+
+    "SENSEX":"^BSESN",
+
+    "FINNIFTY":"NIFTY_FIN_SERVICE.NS",
+
+    "MIDCPNIFTY":"NIFTY_MID_SELECT.NS",
+
+    "RELIANCE":"RELIANCE.NS",
+
+    "TCS":"TCS.NS",
+
+    "INFY":"INFY.NS",
+
+    "HDFCBANK":"HDFCBANK.NS",
+
+    "ICICIBANK":"ICICIBANK.NS",
+
+    "SBIN":"SBIN.NS"
+
 }
 
 
-# -------------------------------------------------------
-# LIVE MARKET SNAPSHOT
-# -------------------------------------------------------
+# --------------------------------------------
+# Timeframes
+# --------------------------------------------
 
-@st.cache_data(ttl=10)
-def get_live_market_data():
+TIMEFRAMES={
 
-    data = {}
+"1m":"1d",
 
-    for name, ticker in SYMBOLS.items():
+"5m":"5d",
 
-        try:
+"15m":"1mo",
 
-            tk = yf.Ticker(ticker)
+"30m":"1mo",
 
-            info = tk.fast_info
+"1h":"3mo",
 
-            last = round(info.last_price, 2)
-            prev = round(info.previous_close, 2)
+"1d":"1y"
 
-            change = round(last - prev, 2)
-
-            pct = round((change / prev) * 100, 2)
-
-            data[name] = {
-
-                "price": last,
-                "change": change,
-                "percent": pct
-
-            }
-
-        except Exception:
-
-            data[name] = {
-
-                "price": None,
-                "change": None,
-                "percent": None
-
-            }
-
-    return data
+}
 
 
-# -------------------------------------------------------
-# HISTORICAL DATA
-# -------------------------------------------------------
+# --------------------------------------------
+# Download Historical Data
+# --------------------------------------------
 
 @st.cache_data(ttl=30)
-def get_historical_data(
-    symbol="NIFTY",
-    period="3mo",
-    interval="15m"
-):
 
-    ticker = SYMBOLS.get(symbol, "^NSEI")
+def get_history(symbol,
+                interval="15m"):
 
-    df = yf.download(
+    ticker=SYMBOLS.get(symbol,symbol)
+
+    period=TIMEFRAMES.get(interval,"1mo")
+
+    df=yf.download(
+
         ticker,
-        period=period,
+
         interval=interval,
+
+        period=period,
+
         progress=False,
+
         auto_adjust=True
+
     )
 
     if df.empty:
-        return None
 
-    df.reset_index(inplace=True)
+        return pd.DataFrame()
 
-    if "Datetime" in df.columns:
-        df.rename(columns={"Datetime": "Date"}, inplace=True)
-
-    if "Date" not in df.columns:
-        df.rename(columns={"index": "Date"}, inplace=True)
+    df=df.reset_index()
 
     return df
 
 
-# -------------------------------------------------------
-# MARKET STATUS
-# -------------------------------------------------------
+# --------------------------------------------
+# Latest Price
+# --------------------------------------------
 
-def market_status():
+@st.cache_data(ttl=5)
 
-    from datetime import datetime
+def get_ltp(symbol):
 
-    now = datetime.now()
+    ticker=SYMBOLS.get(symbol,symbol)
 
-    if now.weekday() >= 5:
-        return "Market Closed"
+    obj=yf.Ticker(ticker)
 
-    if 9 <= now.hour < 15:
-        return "Market Open"
+    info=obj.fast_info
 
-    return "Market Closed"
+    return{
+
+        "price":round(info["lastPrice"],2),
+
+        "previous_close":round(info["previousClose"],2),
+
+        "day_high":round(info["dayHigh"],2),
+
+        "day_low":round(info["dayLow"],2),
+
+        "volume":info["lastVolume"]
+
+    }
+
+
+# --------------------------------------------
+# Percentage Change
+# --------------------------------------------
+
+def percentage_change(price,previous):
+
+    return round(((price-previous)/previous)*100,2)
+
+
+# --------------------------------------------
+# Live Snapshot
+# --------------------------------------------
+
+def market_snapshot(symbol):
+
+    live=get_ltp(symbol)
+
+    chg=percentage_change(
+
+        live["price"],
+
+        live["previous_close"]
+
+    )
