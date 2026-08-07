@@ -14,6 +14,10 @@ from core.option_chain import (
     support,
     resistance
 )
+from core.risk_manager import (
+    calculate_position_size,
+    risk_reward
+)
 
 from core.market_data import market_snapshot, safe_history
 from core.indicators import add_indicators
@@ -248,3 +252,115 @@ try:
 
 except Exception as e:
     st.warning(f"Option Chain unavailable: {e}")
+st.divider()
+
+st.subheader("💰 Position Size Calculator")
+
+col1, col2 = st.columns(2)
+
+with col1:
+
+    capital = st.number_input(
+        "Capital",
+        value=100000
+    )
+
+    risk = st.slider(
+        "Risk %",
+        1,
+        5,
+        2
+    )
+
+with col2:
+
+    entry = st.number_input(
+        "Entry",
+        value=100.0
+    )
+
+    stop = st.number_input(
+        "Stop Loss",
+        value=95.0
+    )
+
+    target = st.number_input(
+        "Target",
+        value=115.0
+    )
+
+qty = calculate_position_size(
+    capital,
+    risk,
+    entry,
+    stop
+)
+
+rr = risk_reward(
+    entry,
+    target,
+    stop
+)
+
+c1, c2 = st.columns(2)
+
+with c1:
+    st.metric(
+        "Suggested Quantity",
+        qty
+    )
+
+with c2:
+    st.metric(
+        "Risk Reward",
+        f"{rr} : 1"
+)
+    st.divider()
+
+st.subheader("🤖 AI Trade Recommendation")
+
+if not df.empty:
+
+    latest = df.iloc[-1]
+
+    signal = "HOLD"
+    confidence = 60
+    reason = []
+
+    if latest["Close"] > latest["EMA20"]:
+        reason.append("Price above EMA20")
+        confidence += 10
+
+    if latest["EMA20"] > latest["EMA50"]:
+        reason.append("EMA20 above EMA50")
+        confidence += 10
+
+    if latest["RSI"] > 60:
+        reason.append("Strong RSI")
+        confidence += 10
+
+    if latest["MACD"] > latest["MACD_SIGNAL"]:
+        reason.append("MACD Bullish")
+        confidence += 10
+
+    if confidence >= 85:
+        signal = "STRONG BUY"
+
+    elif confidence >= 75:
+        signal = "BUY"
+
+    elif confidence <= 45:
+        signal = "SELL"
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.metric("Recommendation", signal)
+
+    with col2:
+        st.metric("Confidence", f"{confidence}%")
+
+    st.write("### Why?")
+
+    for r in reason:
+        st.success(r)
