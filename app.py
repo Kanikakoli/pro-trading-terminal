@@ -215,9 +215,9 @@ if not df.empty:
     fig = candlestick_chart(df, symbol)
 
     st.plotly_chart(
-    fig,
-    use_container_width=True
-)
+        fig,
+        use_container_width=True
+    )
 
 else:
 
@@ -382,7 +382,12 @@ if not df.empty:
     else:
         signal = "🟡 HOLD"
 
-    confidence = min(abs(score), 95)
+    # ----------------------------------
+    # Dynamic AI Confidence
+    # ----------------------------------
+
+    confidence = 50 + (abs(score) * 0.6)
+    confidence = min(round(confidence), 95)
 
     col1, col2 = st.columns(2)
 
@@ -396,3 +401,40 @@ if not df.empty:
 
     for r in reason:
         st.success(r)
+# ----------------------------------
+# AI Trade Levels
+# ----------------------------------
+
+    entry = round(latest["Close"], 2)
+
+    stop_loss = round(entry - (1.5 * latest["ATR"]), 2)
+
+    target1 = round(entry + (2 * latest["ATR"]), 2)
+
+    target2 = round(entry + (3 * latest["ATR"]), 2)
+
+    st.divider()
+
+    st.subheader("🎯 AI Trade Setup")
+
+rr = round((target1 - entry) / (entry - stop_loss), 2)
+
+st.metric("Risk / Reward", f"{rr}:1")
+
+if rr >= 2:
+    st.success("✅ Good Risk-Reward Trade")
+else:
+    st.warning("⚠️ Risk-Reward is below 2:1")
+c1, c2, c3, c4 = st.columns(4)
+
+with c1:
+    st.metric("Entry", entry)
+
+with c2:
+    st.metric("Stop Loss", stop_loss)
+
+with c3:
+    st.metric("Target 1", target1)
+
+with c4:
+    st.metric("Target 2", target2)
