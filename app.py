@@ -214,7 +214,7 @@ if not df.empty:
 
     fig = candlestick_chart(df, symbol)
 
-st.plotly_chart(
+    st.plotly_chart(
     fig,
     use_container_width=True
 )
@@ -312,7 +312,7 @@ with c2:
         "Risk Reward",
         f"{rr} : 1"
 )
-    st.divider()
+st.divider()
 
 st.subheader("🤖 AI Trade Recommendation")
 
@@ -320,44 +320,82 @@ if not df.empty:
 
     latest = df.iloc[-1]
 
-    signal = "HOLD"
-    confidence = 60
+    score = 0
     reason = []
 
-    if latest["Close"] > latest["EMA20"]:
-        reason.append("Price above EMA20")
-        confidence += 10
+# Trend
+if latest["EMA20"] > latest["EMA50"]:
+    score += 20
+    reason.append("EMA20 > EMA50 (Bullish Trend)")
+else:
+    score -= 20
+    reason.append("EMA20 < EMA50 (Bearish Trend)")
 
-    if latest["EMA20"] > latest["EMA50"]:
-        reason.append("EMA20 above EMA50")
-        confidence += 10
+# RSI
+if 55 <= latest["RSI"] <= 70:
+    score += 20
+    reason.append("Healthy RSI")
+elif latest["RSI"] > 70:
+    score -= 10
+    reason.append("Overbought")
+elif latest["RSI"] < 35:
+    score += 10
+    reason.append("Oversold Bounce Possible")
 
-    if latest["RSI"] > 60:
-        reason.append("Strong RSI")
-        confidence += 10
+# MACD
+if latest["MACD"] > latest["MACD_SIGNAL"]:
+    score += 20
+    reason.append("MACD Bullish Crossover")
+else:
+    score -= 20
+    reason.append("MACD Bearish")
 
-    if latest["MACD"] > latest["MACD_SIGNAL"]:
-        reason.append("MACD Bullish")
-        confidence += 10
+# ADX
+if latest["ADX"] > 25:
+    score += 20
+    reason.append("Strong Trend")
+else:
+    reason.append("Weak Trend")
 
-    if confidence >= 85:
-        signal = "STRONG BUY"
+# VWAP
+# ADX
+...
 
-    elif confidence >= 75:
-        signal = "BUY"
+# VWAP
+if latest["Close"] > latest["VWAP"]:
+    score += 20
+    reason.append("Above VWAP")
+else:
+    score -= 20
+    reason.append("Below VWAP")
 
-    elif confidence <= 45:
-        signal = "SELL"
+# Final Signal
+if score >= 70:
+    signal = "🟢 STRONG BUY"
 
-    col1, col2 = st.columns(2)
+elif score >= 40:
+    signal = "🟢 BUY"
 
-    with col1:
-        st.metric("Recommendation", signal)
+elif score <= -40:
+    signal = "🔴 STRONG SELL"
 
-    with col2:
-        st.metric("Confidence", f"{confidence}%")
+elif score <= -20:
+    signal = "🔴 SELL"
 
-    st.write("### Why?")
+else:
+    signal = "🟡 HOLD"
 
-    for r in reason:
-        st.success(r)
+confidence = min(abs(score), 95)
+
+col1, col2 = st.columns(2)
+
+with col1:
+    st.metric("Recommendation", signal)
+
+with col2:
+    st.metric("Confidence", f"{confidence}%")
+
+st.write("### Why?")
+
+for r in reason:
+    st.success(r)
