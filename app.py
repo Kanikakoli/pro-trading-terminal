@@ -69,6 +69,12 @@ h1,h2,h3{
 # ----------------------------------------------------
 
 st.title("📈 PRO AI TRADING TERMINAL")
+refresh = st.sidebar.slider(
+    "Auto Refresh (sec)",
+    5,
+    60,
+    15
+)
 
 st.caption("Professional AI Trading Dashboard")
 
@@ -175,10 +181,10 @@ with left:
             "1d"
         ]
     )
-
+    df = pd.DataFrame()
     df = safe_history(symbol, timeframe)
 
-    if not df.empty:
+    if not df.empty and len(df) > 0:
 
         df = add_indicators(df)
 
@@ -332,9 +338,9 @@ if not df.empty:
 
     else:
 
-        stop = "-"
-        target1 = "-"
-        target2 = "-"
+        stop = None
+        target1 = None
+        target2 = None
 
     c1, c2, c3, c4 = st.columns(4)
 
