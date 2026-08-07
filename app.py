@@ -8,11 +8,19 @@ Version : 2.0
 
 import streamlit as st
 import pandas as pd
+from core.option_chain import (
+    get_option_chain,
+    pcr,
+    support,
+    resistance
+)
 
 from core.market_data import market_snapshot, safe_history
 from core.indicators import add_indicators
 from core.scanner import scanner_dataframe
 from components.chart import candlestick_chart
+from core.option_chain import *
+
 
 # ----------------------------------------------------
 # PAGE CONFIG
@@ -205,3 +213,38 @@ if not df.empty:
     st.plotly_chart(
         fig,
         use
+st.plotly_chart(
+    fig,
+    use_container_width=True
+)
+
+else:
+
+    st.error("No market data available.")
+st.divider()
+
+st.subheader("📊 Live Option Chain")
+
+try:
+
+    oc = get_option_chain()
+
+    st.dataframe(
+        oc.tail(15),
+        use_container_width=True,
+        hide_index=True
+    )
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.metric("PCR", pcr(oc))
+
+    with col2:
+        st.metric("Support", support(oc))
+
+    with col3:
+        st.metric("Resistance", resistance(oc))
+
+except Exception as e:
+    st.warning(f"Option Chain unavailable: {e}")
