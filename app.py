@@ -205,3 +205,147 @@ with right:
         st.metric("ADX", round(latest["ADX"], 2))
         st.metric("VWAP", round(latest["VWAP"], 2))
 st.divider()
+# ----------------------------------------------------
+# AI TRADE RECOMMENDATION
+# ----------------------------------------------------
+
+st.subheader("🤖 AI Trade Recommendation")
+
+if not df.empty:
+
+    latest = df.iloc[-1]
+
+    score = 0
+    reasons = []
+
+    # ---------------- TREND ----------------
+
+    if latest["EMA20"] > latest["EMA50"]:
+        score += 20
+        reasons.append("✅ EMA20 above EMA50")
+
+    else:
+        score -= 20
+        reasons.append("❌ EMA20 below EMA50")
+
+    # ---------------- RSI ----------------
+
+    if 55 <= latest["RSI"] <= 70:
+        score += 20
+        reasons.append("✅ Healthy RSI")
+
+    elif latest["RSI"] > 70:
+        score -= 10
+        reasons.append("⚠️ Overbought")
+
+    elif latest["RSI"] < 35:
+        score += 10
+        reasons.append("✅ Oversold Bounce")
+
+    # ---------------- MACD ----------------
+
+    if latest["MACD"] > latest["MACD_SIGNAL"]:
+        score += 20
+        reasons.append("✅ MACD Bullish")
+
+    else:
+        score -= 20
+        reasons.append("❌ MACD Bearish")
+
+    # ---------------- ADX ----------------
+
+    if latest["ADX"] > 25:
+        score += 20
+        reasons.append("✅ Strong Trend")
+
+    else:
+        reasons.append("⚠️ Weak Trend")
+
+    # ---------------- VWAP ----------------
+
+    if latest["Close"] > latest["VWAP"]:
+        score += 20
+        reasons.append("✅ Above VWAP")
+
+    else:
+        score -= 20
+        reasons.append("❌ Below VWAP")
+
+    # ---------------- SIGNAL ----------------
+
+    if score >= 70:
+        signal = "🟢 STRONG BUY"
+
+    elif score >= 40:
+        signal = "🟢 BUY"
+
+    elif score <= -40:
+        signal = "🔴 STRONG SELL"
+
+    elif score <= -20:
+        signal = "🔴 SELL"
+
+    else:
+        signal = "🟡 HOLD"
+
+    confidence = min(95, round(50 + abs(score) * 0.6))
+
+    c1, c2 = st.columns(2)
+
+    with c1:
+        st.metric("AI Signal", signal)
+
+    with c2:
+        st.metric("Confidence", f"{confidence}%")
+
+    st.write("### AI Analysis")
+
+    for item in reasons:
+        st.write(item)
+# ----------------------------------------------------
+# AI TRADE SETUP
+# ----------------------------------------------------
+
+st.subheader("🎯 AI Trade Setup")
+
+if not df.empty:
+
+    entry = round(latest["Close"], 2)
+
+    atr = latest["ATR"]
+
+    if "BUY" in signal:
+
+        stop = round(entry - 1.5 * atr, 2)
+
+        target1 = round(entry + 2 * atr, 2)
+
+        target2 = round(entry + 3 * atr, 2)
+
+    elif "SELL" in signal:
+
+        stop = round(entry + 1.5 * atr, 2)
+
+        target1 = round(entry - 2 * atr, 2)
+
+        target2 = round(entry - 3 * atr, 2)
+
+    else:
+
+        stop = "-"
+        target1 = "-"
+        target2 = "-"
+
+    c1, c2, c3, c4 = st.columns(4)
+
+    with c1:
+        st.metric("Entry", entry)
+
+    with c2:
+        st.metric("Stop Loss", stop)
+
+    with c3:
+        st.metric("Target 1", target1)
+
+    with c4:
+        st.metric("Target 2", target2)
