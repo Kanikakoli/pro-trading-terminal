@@ -23,7 +23,7 @@ from core.market_data import market_snapshot, safe_history
 from core.indicators import add_indicators
 from core.scanner import scanner_dataframe
 from components.chart import candlestick_chart
-from core.option_chain import *
+
 
 
 # ----------------------------------------------------
@@ -214,9 +214,6 @@ if not df.empty:
 
     fig = candlestick_chart(df, symbol)
 
-    st.plotly_chart(
-        fig,
-        use
 st.plotly_chart(
     fig,
     use_container_width=True
