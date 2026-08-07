@@ -130,11 +130,24 @@ st.divider()
 # AI MARKET SCANNER
 # ----------------------------------------------------
 
-st.subheader("🔥 AI Market Scanner")
+if show_scanner:
 
-scanner=scanner_dataframe()
+    st.subheader("🔥 AI Market Scanner")
 
-if not scanner.empty:
+    scanner = scanner_dataframe()
+
+    if not scanner.empty:
+
+        st.dataframe(
+            scanner,
+            use_container_width=True,
+            hide_index=True
+        )
+
+    else:
+        st.warning("Scanner data unavailable.")
+
+    st.divider()
 
     st.dataframe(
         scanner,
@@ -355,3 +368,112 @@ if not df.empty:
 
     with c4:
         st.metric("Target 2", target2)
+st.divider()
+
+st.subheader("📊 Live Option Chain")
+
+try:
+
+    oc = get_option_chain()
+
+    st.dataframe(
+        oc.tail(15),
+        use_container_width=True,
+        hide_index=True
+    )
+
+    c1, c2, c3 = st.columns(3)
+
+    with c1:
+        st.metric("PCR", pcr(oc))
+
+    with c2:
+        st.metric("Support", support(oc))
+
+    with c3:
+        st.metric("Resistance", resistance(oc))
+
+except Exception as e:
+
+    st.warning("Option Chain unavailable")
+st.divider()
+
+st.subheader("💰 Position Size Calculator")
+
+col1, col2 = st.columns(2)
+
+with col1:
+
+    capital = st.number_input(
+        "Capital",
+        value=100000
+    )
+
+    risk = st.slider(
+        "Risk %",
+        1,
+        5,
+        2
+    )
+
+with col2:
+
+    entry_price = st.number_input(
+        "Entry Price",
+        value=100.0
+    )
+
+    stop_price = st.number_input(
+        "Stop Loss",
+        value=95.0
+    )
+
+qty = calculate_position_size(
+    capital,
+    risk,
+    entry_price,
+    stop_price
+)
+
+st.metric(
+    "Suggested Quantity",
+    qty
+)
+target_price = st.number_input(
+    "Target Price",
+    value=115.0
+)
+
+rr = risk_reward(
+    entry_price,
+    target_price,
+    stop_price
+)
+
+st.metric(
+    "Risk Reward",
+    f"{rr}:1"
+)
+refresh = st.sidebar.slider(
+    "Auto Refresh (sec)",
+    5,
+    60,
+    15
+)
+
+st.sidebar.title("⚙ Settings")
+
+theme = st.sidebar.selectbox(
+    "Theme",
+    ["Dark", "Light"]
+)
+
+show_scanner = st.sidebar.checkbox(
+    "Show AI Scanner",
+    True
+)
+
+show_option_chain = st.sidebar.checkbox(
+    "Show Option Chain",
+    True
+    )
